@@ -42,12 +42,13 @@ end
 
 local function updateCharacterBoxes(char)
  if stopAll or not char then return end
+ if char == player.Character then return end
  for _,part in ipairs(char:GetDescendants()) do
   if part:IsA("BasePart") then
    if enabledSurvivors and char.Parent and char.Parent.Name=="Survivors" then
-    addBox(part,Color3.fromRGB(255,0,0),0.8)
+    addBox(part,Color3.fromRGB(255,0,0),0.9)
    elseif enabledKillers and char.Parent and char.Parent.Name=="Killers" then
-    addBox(part,Color3.fromRGB(0,0,255),0.8)
+    addBox(part,Color3.fromRGB(0,0,255),0.85)
    else
     removeBox(part)
    end
@@ -59,10 +60,10 @@ local function updateToolsAndPizza(obj)
  if stopAll or not enabledLoot then return end
  if obj:IsA("Tool") and (obj.Name=="BloxyCola" or obj.Name=="Medkit") then
   for _,part in ipairs(obj:GetDescendants()) do
-   if part:IsA("BasePart") then addBox(part,Color3.fromRGB(0,255,0),0.2) end
+   if part:IsA("BasePart") then addBox(part,Color3.fromRGB(0,255,0),0.5) end
   end
  elseif obj:IsA("BasePart") and obj.Name=="Pizza" then
-  addBox(obj,Color3.fromRGB(0,255,0),0.2)
+  addBox(obj,Color3.fromRGB(0,255,0),0.5)
  end
 end
 
