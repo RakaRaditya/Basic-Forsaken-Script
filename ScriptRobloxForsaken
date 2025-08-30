@@ -214,7 +214,7 @@ local function createGUI()
  local confirmText=Instance.new("TextLabel",confirmFrame)
  confirmText.Size=UDim2.new(1,0,0,50)
  confirmText.Position=UDim2.new(0,0,0,10)
- confirmText.Text="Are you sure?"
+ confirmText.Text="Are You Sure Cancel This GUI?"
  confirmText.TextColor3=Color3.fromRGB(255,255,255)
  confirmText.BackgroundTransparency=1
  confirmText.TextSize=18
@@ -269,9 +269,9 @@ local function createGUI()
   end)
  end
 
- makeToggle("Survivors Scan",enabledSurvivors,function(s) enabledSurvivors=s end)
- makeToggle("Loot Radar",enabledLoot,function(s) enabledLoot=s end)
- makeToggle("Killers X-ray",enabledKillers,function(s) enabledKillers=s end)
+ makeToggle("Survivors ESP",enabledSurvivors,function(s) enabledSurvivors=s end)
+ makeToggle("Item ESP",enabledLoot,function(s) enabledLoot=s end)
+ makeToggle("Killers ESP",enabledKillers,function(s) enabledKillers=s end)
  makeToggle("Auto Lock",enabledRotate,function(s) enabledRotate=s end)
 
  local timeBtn=Instance.new("TextButton",mainFrame)
