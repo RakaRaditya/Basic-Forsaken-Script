@@ -13,7 +13,7 @@ local stopAll=false
 local enabledSurvivors=true
 local enabledLoot=true
 local enabledKillers=true
-local enabledRotate=true
+local enabledRotate=false
 local currentTime=14
 local boxes={}
 local guiVisible=true
@@ -270,8 +270,8 @@ local function createGUI()
  end
 
  makeToggle("Survivors ESP",enabledSurvivors,function(s) enabledSurvivors=s end)
- makeToggle("Item ESP",enabledLoot,function(s) enabledLoot=s end)
  makeToggle("Killers ESP",enabledKillers,function(s) enabledKillers=s end)
+ makeToggle("Item ESP",enabledLoot,function(s) enabledLoot=s end)
  makeToggle("Auto Lock",enabledRotate,function(s) enabledRotate=s end)
 
  local timeBtn=Instance.new("TextButton",mainFrame)
