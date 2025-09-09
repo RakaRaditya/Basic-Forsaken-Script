@@ -5,14 +5,14 @@ local Workspace=game:GetService("Workspace")
 local StarterGui=game:GetService("StarterGui")
 local UserInputService=game:GetService("UserInputService")
 local player=Players.LocalPlayer
-
 player:WaitForChild("PlayerGui")
 StarterGui:SetCore("SendNotification",{Title="Info",Text="Script Work!",Duration=5})
-
 local stopAll=false
 local enabledSurvivors=true
-local enabledLoot=true
 local enabledKillers=true
+local enabledLoot=true
+local enabledSurvivorLoot=true
+local enabledGenerator=true
 local enabledRotate=false
 local currentTime=14
 local boxes={}
@@ -42,7 +42,7 @@ end
 
 local function updateCharacterBoxes(char)
  if stopAll or not char then return end
- if char == player.Character then return end
+ if char==player.Character then return end
  for _,part in ipairs(char:GetDescendants()) do
   if part:IsA("BasePart") then
    if enabledSurvivors and char.Parent and char.Parent.Name=="Survivors" then
@@ -57,18 +57,33 @@ local function updateCharacterBoxes(char)
 end
 
 local function updateToolsAndPizza(obj)
- if stopAll or not enabledLoot then return end
- if obj:IsA("Tool") and (obj.Name=="BloxyCola" or obj.Name=="Medkit") then
-  for _,part in ipairs(obj:GetDescendants()) do
-   if part:IsA("BasePart") then addBox(part,Color3.fromRGB(0,255,0),0.5) end
+ if stopAll then return end
+ if enabledLoot then
+  if obj:IsA("Tool") and (obj.Name=="BloxyCola" or obj.Name=="Medkit") then
+   for _,part in ipairs(obj:GetDescendants()) do
+    if part:IsA("BasePart") then addBox(part,Color3.fromRGB(0,255,0),0.5) end
+   end
   end
- elseif obj:IsA("BasePart") and obj.Name=="Pizza" then
-  addBox(obj,Color3.fromRGB(0,255,0),0.5)
+ end
+ if enabledSurvivorLoot then
+  if obj:IsA("BasePart") and (obj.Name=="Pizza" or obj.Name=="Wire" or obj.Name=="Hook1" or obj.Name=="Hook2" or obj.Name=="SubspaceCenter") then
+   addBox(obj,Color3.fromRGB(255,105,180),0.5)
+  end
+  if obj:IsA("Model") and (obj.Name=="BuildermanDispenser" or obj.Name=="BuildermanSentry") then
+   for _,p in ipairs(obj:GetDescendants()) do
+    if p:IsA("BasePart") then addBox(p,Color3.fromRGB(255,105,180),0.5) end
+   end
+  end
  end
 end
 
 local function scanWorkspace(folder)
- for _,obj in ipairs(folder:GetDescendants()) do updateToolsAndPizza(obj) end
+ for _,obj in ipairs(folder:GetDescendants()) do
+  updateToolsAndPizza(obj)
+  if enabledGenerator and obj:IsA("BasePart") and obj.Name=="NurbsPath" then
+   addBox(obj,Color3.fromRGB(255,165,0),0.5)
+  end
+ end
 end
 
 local function refreshAllBoxes()
@@ -94,8 +109,12 @@ for _,plr in pairs(Players:GetPlayers()) do
  if plr.Character then updateCharacterBoxes(plr.Character) end
 end
 
-scanWorkspace(Workspace)
-Workspace.DescendantAdded:Connect(updateToolsAndPizza)
+Workspace.DescendantAdded:Connect(function(obj)
+ updateToolsAndPizza(obj)
+ if enabledGenerator and obj:IsA("BasePart") and obj.Name=="NurbsPath" then
+  addBox(obj,Color3.fromRGB(255,165,0),0.5)
+ end
+end)
 
 RunService.RenderStepped:Connect(function()
  if stopAll then return end
@@ -105,13 +124,27 @@ RunService.RenderStepped:Connect(function()
  if not humanoid or not root then return end
  if humanoid.Health<=0 then return end
  if enabledRotate then
+  local isSurvivor = player.Character.Parent and player.Character.Parent.Name=="Survivors"
   local closest=nil
   local distMin=math.huge
-  for _,plr in pairs(Players:GetPlayers()) do
-   if plr~=player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChildOfClass("Humanoid") then
-    local target=plr.Character.HumanoidRootPart
-    local dist=(target.Position-root.Position).Magnitude
-    if dist<distMin then distMin=dist; closest=target end
+  if isSurvivor then
+   for _,plr in pairs(Players:GetPlayers()) do
+    if plr.Character and plr.Character.Parent and plr.Character.Parent.Name=="Killers" then
+     local target=plr.Character:FindFirstChild("HumanoidRootPart")
+     local targetHum=plr.Character:FindFirstChildOfClass("Humanoid")
+     if target and targetHum and targetHum.Health>0 then
+      local dist=(target.Position-root.Position).Magnitude
+      if dist<distMin then distMin=dist; closest=target end
+     end
+    end
+   end
+  else
+   for _,plr in pairs(Players:GetPlayers()) do
+    if plr~=player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChildOfClass("Humanoid") then
+     local target=plr.Character.HumanoidRootPart
+     local dist=(target.Position-root.Position).Magnitude
+     if dist<distMin then distMin=dist; closest=target end
+    end
    end
   end
   if closest then
@@ -133,9 +166,7 @@ local function makeDraggable(frame,handle,callback)
  local moved=false
  local function update(input)
   local delta=input.Position-dragStart
-  if math.abs(delta.X)>2 or math.abs(delta.Y)>2 then
-   moved=true
-  end
+  if math.abs(delta.X)>2 or math.abs(delta.Y)>2 then moved=true end
   frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
  end
  handle.InputBegan:Connect(function(input)
@@ -147,9 +178,7 @@ local function makeDraggable(frame,handle,callback)
    input.Changed:Connect(function()
     if input.UserInputState==Enum.UserInputState.End then
      dragging=false
-     if not moved then
-      callback()
-     end
+     if not moved then callback() end
     end
    end)
   end
@@ -160,27 +189,22 @@ local function makeDraggable(frame,handle,callback)
   end
  end)
  UserInputService.InputChanged:Connect(function(input)
-  if input==dragInput and dragging then
-   update(input)
-  end
+  if input==dragInput and dragging then update(input) end
  end)
 end
 
 local function createGUI()
  local ScreenGui=Instance.new("ScreenGui",player.PlayerGui)
  ScreenGui.ResetOnSpawn=false
-
  local mainFrame=Instance.new("Frame",ScreenGui)
- mainFrame.Size=UDim2.new(0,240,0,250)
- mainFrame.Position=UDim2.new(0,10,0.5,-125)
+ mainFrame.Size=UDim2.new(0,240,0,300)
+ mainFrame.Position=UDim2.new(0,10,0.5,-150)
  mainFrame.BackgroundColor3=Color3.fromRGB(0,0,0)
  mainFrame.BackgroundTransparency=0.35
  mainFrame.BorderSizePixel=0
-
  local topFrame=Instance.new("Frame",mainFrame)
  topFrame.Size=UDim2.new(1,0,0,40)
  topFrame.BackgroundTransparency=1
-
  local toggleBtn=Instance.new("TextButton",topFrame)
  toggleBtn.Size=UDim2.new(0.8,0,1,0)
  toggleBtn.Position=UDim2.new(0,0,0,0)
@@ -189,7 +213,6 @@ local function createGUI()
  toggleBtn.TextColor3=Color3.fromRGB(255,255,255)
  toggleBtn.Font=Enum.Font.GothamBold
  toggleBtn.TextSize=16
-
  local closeBtn=Instance.new("TextButton",topFrame)
  closeBtn.Size=UDim2.new(0.2,0,1,0)
  closeBtn.Position=UDim2.new(0.8,0,0,0)
@@ -198,19 +221,16 @@ local function createGUI()
  closeBtn.TextColor3=Color3.fromRGB(255,255,255)
  closeBtn.Font=Enum.Font.GothamBold
  closeBtn.TextSize=14
-
  local layout=Instance.new("UIListLayout",mainFrame)
  layout.Padding=UDim.new(0,5)
  layout.HorizontalAlignment=Enum.HorizontalAlignment.Center
  layout.VerticalAlignment=Enum.VerticalAlignment.Top
  layout.SortOrder=Enum.SortOrder.LayoutOrder
-
  local confirmFrame=Instance.new("Frame",ScreenGui)
  confirmFrame.Size=UDim2.new(0,250,0,120)
  confirmFrame.Position=UDim2.new(0.5,-125,0.5,-60)
  confirmFrame.BackgroundColor3=Color3.fromRGB(25,25,25)
  confirmFrame.Visible=false
-
  local confirmText=Instance.new("TextLabel",confirmFrame)
  confirmText.Size=UDim2.new(1,0,0,50)
  confirmText.Position=UDim2.new(0,0,0,10)
@@ -219,7 +239,6 @@ local function createGUI()
  confirmText.BackgroundTransparency=1
  confirmText.TextSize=18
  confirmText.Font=Enum.Font.GothamBold
-
  local yes=Instance.new("TextButton",confirmFrame)
  yes.Size=UDim2.new(0.45,0,0,40)
  yes.Position=UDim2.new(0.05,0,0.6,0)
@@ -228,7 +247,6 @@ local function createGUI()
  yes.TextColor3=Color3.fromRGB(255,255,255)
  yes.Font=Enum.Font.GothamBold
  yes.TextSize=16
-
  local no=Instance.new("TextButton",confirmFrame)
  no.Size=UDim2.new(0.45,0,0,40)
  no.Position=UDim2.new(0.5,0,0.6,0)
@@ -237,7 +255,6 @@ local function createGUI()
  no.TextColor3=Color3.fromRGB(255,255,255)
  no.Font=Enum.Font.GothamBold
  no.TextSize=16
-
  closeBtn.MouseButton1Click:Connect(function() confirmFrame.Visible=true end)
  yes.MouseButton1Click:Connect(function()
   stopAll=true
@@ -256,7 +273,7 @@ local function createGUI()
   local state=default
   local function updateText()
    local color=state and "0,255,0" or "255,0,0"
-   btn.Text=name..': <font color="rgb('..color..')">'..(state and "ON" or "OFF")..'</font>'
+   btn.Text=name..' : <font color="rgb('..color..')">'..(state and "ON" or "OFF")..'</font>'
    btn.TextColor3=Color3.fromRGB(255,255,255)
    btn.TextSize=16
   end
@@ -272,6 +289,8 @@ local function createGUI()
  makeToggle("Survivors ESP",enabledSurvivors,function(s) enabledSurvivors=s end)
  makeToggle("Killers ESP",enabledKillers,function(s) enabledKillers=s end)
  makeToggle("Item ESP",enabledLoot,function(s) enabledLoot=s end)
+ makeToggle("Survivor Item ESP",enabledSurvivorLoot,function(s) enabledSurvivorLoot=s end)
+ makeToggle("Generator ESP",enabledGenerator,function(s) enabledGenerator=s; for _,nurbs in ipairs(Workspace:GetDescendants()) do if nurbs:IsA("BasePart") and nurbs.Name=="NurbsPath" then if s then addBox(nurbs,Color3.fromRGB(255,165,0),0.7) else removeBox(nurbs) end end end end)
  makeToggle("Auto Lock",enabledRotate,function(s) enabledRotate=s end)
 
  local timeBtn=Instance.new("TextButton",mainFrame)
@@ -282,23 +301,19 @@ local function createGUI()
  timeBtn.Font=Enum.Font.GothamBold
  timeBtn.TextSize=16
  timeBtn.MouseButton1Click:Connect(function()
-  currentTime=currentTime+1
-  if currentTime>23 then currentTime=0 end
+  currentTime=currentTime + 1
+  if currentTime > 23 then currentTime = 0 end
   timeBtn.Text="Time of Day: "..currentTime
  end)
 
  makeDraggable(mainFrame,toggleBtn,function()
   guiVisible=not guiVisible
   for i,v in ipairs(mainFrame:GetChildren()) do
-   if v:IsA("TextButton") and v~=toggleBtn and v~=closeBtn then
-    v.Visible=guiVisible
-   end
+   if v:IsA("TextButton") and v~=toggleBtn and v~=closeBtn then v.Visible=guiVisible end
   end
   mainFrame.BackgroundTransparency=guiVisible and 0.35 or 1
  end)
 end
 
 createGUI()
-Players.LocalPlayer.CharacterAdded:Connect(function()
- refreshAllBoxes()
-end)
+Players.LocalPlayer.CharacterAdded:Connect(function() refreshAllBoxes() end)
