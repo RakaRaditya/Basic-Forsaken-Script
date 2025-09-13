@@ -1,0 +1,66 @@
+local Players=game:GetService("Players")
+local RunService=game:GetService("RunService")
+local player=Players.LocalPlayer
+
+local idleAnim=Instance.new("Animation")
+idleAnim.AnimationId="rbxassetid://96029349600709"
+local walkAnim=Instance.new("Animation")
+walkAnim.AnimationId="rbxassetid://122086286372651"
+local runAnim=Instance.new("Animation")
+runAnim.AnimationId="rbxassetid://73833636394121"
+
+local idleTrack,walkTrack,runTrack,humanoid,root
+
+local function loadAnims(char)
+	humanoid=char:WaitForChild("Humanoid")
+	root=char:WaitForChild("HumanoidRootPart")
+	idleTrack=humanoid:LoadAnimation(idleAnim)
+	walkTrack=humanoid:LoadAnimation(walkAnim)
+	runTrack=humanoid:LoadAnimation(runAnim)
+	idleTrack.Looped=true
+	walkTrack.Looped=true
+	runTrack.Looped=true
+	idleTrack:Play()
+
+	humanoid.AnimationPlayed:Connect(function(track)
+		if track~=idleTrack and track~=walkTrack and track~=runTrack then
+			if idleTrack.IsPlaying then
+				idleTrack:Stop()
+			end
+		end
+	end)
+end
+
+local function onCharAdded(char)
+	loadAnims(char)
+	RunService.RenderStepped:Connect(function()
+		if humanoid and root and humanoid.Parent then
+			local velocity=root.Velocity.Magnitude
+			local speed=humanoid.WalkSpeed
+			if velocity>0.1 then
+				if speed<20 then
+					if not walkTrack.IsPlaying then
+						idleTrack:Stop()
+						runTrack:Stop()
+						walkTrack:Play()
+					end
+				else
+					if not runTrack.IsPlaying then
+						idleTrack:Stop()
+						walkTrack:Stop()
+						runTrack:Play()
+					end
+				end
+			else
+				if not idleTrack.IsPlaying then
+					walkTrack:Stop()
+					runTrack:Stop()
+					idleTrack:Play()
+				end
+			end
+		end
+	end)
+end
+
+player.CharacterAdded:Connect(onCharAdded)
+if player.Character then onCharAdded(player.Character) end
