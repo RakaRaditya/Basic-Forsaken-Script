@@ -169,58 +169,78 @@ Workspace.DescendantAdded:Connect(function(obj)
             end
         end
     end)
-    
-    RunService.RenderStepped:Connect(function()
-        if stopAll then return end
-        if not player.Character then return end
-        
-        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-        local root = player.Character:FindFirstChild("HumanoidRootPart")
-        
-        if not humanoid or not root then return end
-        if humanoid.Health<=0 then return end
-        
-        if enabledRotate then
-            local isSurvivor = player.Character.Parent and player.Character.Parent.Name == "Survivors"
-            local closest = nil
-            local distMin = math.huge
-            
-            if isSurvivor then
-                for _,plr in pairs(Players:GetPlayers()) do
-                    if plr.Character and plr.Character.Parent and plr.Character.Parent.Name == "Killers" then
-                        
-                        local target = plr.Character:FindFirstChild("HumanoidRootPart")
-                        local targetHum = plr.Character:FindFirstChildOfClass("Humanoid")
-                        
-                        if target and targetHum and targetHum.Health>0 then
-                            local dist = (target.Position-root.Position).Magnitude
-                            if dist<distMin then distMin = dist closest = target end
-                        end
-                    end
-                end
-            else
-                for _,plr in pairs(Players:GetPlayers()) do
-                    if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChildOfClass("Humanoid") then
-                        local target = plr.Character.HumanoidRootPart
-                        local dist = (target.Position-root.Position).Magnitude
-                        if dist < distMin then
-                            distMin = dist
-                            closest = target
-                        end
-                    end
-                end
-            end
-            
-            if closest then
-                local pos = root.Position
-                local dir = (closest.Position-pos).Unit
-                local flat = Vector3.new(dir.X,0,dir.Z)
-                if flat.Magnitude>0 then root.CFrame = CFrame.lookAt(pos,pos+flat) end
+
+local autoLockEndTime = 0
+local autoLockDuration = 0.2
+
+RunService.RenderStepped:Connect(function()
+    if stopAll then return end
+    if not player.Character then return end
+
+    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    local root = player.Character:FindFirstChild("HumanoidRootPart")
+
+    if not humanoid or not root then return end
+    if humanoid.Health<=0 then return end
+
+    local hasUsernameHitbox = false
+    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local hitboxPart = Workspace:FindFirstChild("Hitboxes")
+        if hitboxPart then
+            local usernameHitbox = hitboxPart:FindFirstChild(player.Name .. "Hitbox")
+            if usernameHitbox then
+                hasUsernameHitbox = true
             end
         end
-        for _,v in pairs(Lighting:GetChildren()) do if v:IsA("Sky") then v:Destroy() end end
-        Lighting.TimeOfDay = string.format("%02d:00:00",currentTime)
-    end)
+    end
+
+    if hasUsernameHitbox then
+        autoLockEndTime = math.max(autoLockEndTime, time() + autoLockDuration)
+    end
+
+    local canRotate = enabledRotate and (hasUsernameHitbox or time() < autoLockEndTime)
+
+    if canRotate then
+        local isSurvivor = player.Character.Parent and player.Character.Parent.Name == "Survivors"
+        local closest = nil
+        local distMin = math.huge
+
+        if isSurvivor then
+            for _,plr in pairs(Players:GetPlayers()) do
+                if plr.Character and plr.Character.Parent and plr.Character.Parent.Name == "Killers" then
+
+                    local target = plr.Character:FindFirstChild("HumanoidRootPart")
+                    local targetHum = plr.Character:FindFirstChildOfClass("Humanoid")
+
+                    if target and targetHum and targetHum.Health>0 then
+                        local dist = (target.Position-root.Position).Magnitude
+                        if dist<distMin then distMin = dist closest = target end
+                    end
+                end
+            end
+        else
+            for _,plr in pairs(Players:GetPlayers()) do
+                if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChildOfClass("Humanoid") then
+                    local target = plr.Character.HumanoidRootPart
+                    local dist = (target.Position-root.Position).Magnitude
+                    if dist < distMin then
+                        distMin = dist
+                        closest = target
+                    end
+                end
+            end
+        end
+
+        if closest then
+            local pos = root.Position
+            local dir = (closest.Position-pos).Unit
+            local flat = Vector3.new(dir.X,0,dir.Z)
+            if flat.Magnitude>0 then root.CFrame = CFrame.lookAt(pos,pos+flat) end
+        end
+    end
+    for _,v in pairs(Lighting:GetChildren()) do if v:IsA("Sky") then v:Destroy() end end
+    Lighting.TimeOfDay = string.format("%02d:00:00",currentTime)
+end)
     
     local function makeDraggable(frame,handle,callback)
         local dragging = false
