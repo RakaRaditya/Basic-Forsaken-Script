@@ -63,6 +63,19 @@ local function isValidGenerator(nurbs)
     return false
 end
 
+local function isGeneratorActivated(gen)
+    if not gen or not gen:IsA("Model") then return false end
+    local main = gen:FindFirstChild("Main")
+    if not main then return false end
+
+    for _,obj in ipairs(main:GetChildren()) do
+        if obj:IsA("Sound") and obj.Name == "generatorActivate" then
+            return true
+        end
+    end
+    return false
+end
+
 local function updateCharacterBoxes(char)
     if stopAll or not char then return end
     if char == player.Character then return end
@@ -424,32 +437,44 @@ end)
                                     createGUI()
                                     
                                     task.spawn(function()
-                                        local generatorLoopActive = false
-                                        while true do
-                                            if enabledGenerator and not generatorLoopActive then
-                                                generatorLoopActive = true
-                                                task.spawn(function()
-                                                    while enabledGenerator do
-                                                        for part,_ in pairs(boxes) do
-                                                            if part and part:IsA("BasePart") and part.Name == "NurbsPath" and not isValidGenerator(part) then removeBox(part) end
-                                                        end
-                                                        for _,n in ipairs(Workspace:GetDescendants()) do
-                                                            if n:IsA("BasePart") and n.Name == "NurbsPath" and isValidGenerator(n) then
-                                                                addBox(n,Color3.fromRGB(255,165,0),0.5) end
-                                                            end
-                                                            task.wait(3)
-                                                        end
-                                                        generatorLoopActive=false
-                                                    end)
-                                                end
-                                                if not enabledGenerator then
-                                                    for p,_ in pairs(boxes) do
-                                                        if p and p:IsA("BasePart") and p.Name == "NurbsPath" then
-                                                            removeBox(p) end
-                                                        end
-                                                    end
-                                                    task.wait(0.2)
-                                                end
-                                            end)
-                                            
-                                            Players.LocalPlayer.CharacterAdded:Connect(function() refreshAllBoxes() end)
+    local generatorLoopActive = false
+
+    while true do
+        if enabledGenerator and not generatorLoopActive then
+            generatorLoopActive = true
+
+            task.spawn(function()
+                while enabledGenerator do
+                    for _,n in ipairs(Workspace:GetDescendants()) do
+                        if n:IsA("BasePart") and n.Name == "NurbsPath" and isValidGenerator(n) then
+                            local gen = n.Parent and n.Parent.Parent and n.Parent.Parent.Parent
+
+                            if gen and gen:IsA("Model") and gen.Name == "Generator" then
+                                if isGeneratorActivated(gen) then
+                                    removeBox(n)
+                                else
+                                    addBox(n, Color3.fromRGB(255,165,0), 0.5)
+                                end
+                            end
+                        end
+                    end
+
+                    task.wait(3)
+                end
+
+                generatorLoopActive = false
+            end)
+        end
+
+        if not enabledGenerator then
+            for p,_ in pairs(boxes) do
+                if p and p:IsA("BasePart") and p.Name == "NurbsPath" then
+                    removeBox(p)
+                end
+            end
+        end
+
+        task.wait(0.2)
+    end
+end)
+
